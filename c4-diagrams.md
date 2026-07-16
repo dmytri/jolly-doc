@@ -148,15 +148,15 @@ Detailed module responsibilities:
 ## Deployment View
 
 ```
-┌──────────────────────┐
-│   npm Registry       │──── npx resolve & download
-│  registry.npmjs.org  │
-│  @dk/jolly package   │
-└──────────────────────┘
-         │
-         ▼
 ┌──────────────────────────────────────────────────────┐
-│              Customer Machine                         │
+│                  npm Registry                         │
+│  registry.npmjs.org  —  @dk/jolly package            │
+│  npx resolve & download                              │
+└──────────────────────────────────────────────────────┘
+                         │
+                         ▼
+┌──────────────────────────────────────────────────────┐
+│                 Customer Machine                      │
 │  Node.js >= 20.12.0                                   │
 │  npx @dk/jolly — dist/index.js (esbuild)             │
 │                                                       │
@@ -173,23 +173,25 @@ Detailed module responsibilities:
 │  │ vercel       │  │ @saleor/conf│  │ pnpm       │  │
 │  └──────────────┘  └──────────────┘  └────────────┘  │
 └──────────────────────────────────────────────────────┘
-         │
-         ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│                         Saleor Cloud                                   │
-│                                                                        │
-│  ┌─────────────────────┐  ┌────────────────────┐  ┌─────────────────┐  │
-│  │ Cloud API           │  │ Auth (Keycloak)    │  │ Store Instance   │  │
-│  │ REST: orgs/projects │  │ OAuth2 device grant│  │ GraphQL API      │  │
-│  │ /environments CRUD  │  │ token refresh      │  │ stock, appInstall│  │
-│  │ cloud.saleor.io/    │  │ auth.saleor.io/    │  │ *.saleor.cloud/  │  │
-│  │ platform/api        │  │ realms/saleor-cloud│  │ graphql/         │  │
-│  └─────────────────────┘  └────────────────────┘  └─────────────────┘  │
-└────────────────────────────────────────────────────────────────────────┘
-         │
-         ▼
+                         │
+                         ▼
 ┌──────────────────────────────────────────────────────┐
-│  Vercel Edge                                          │
+│                   Saleor Cloud                         │
+│                                                       │
+│  ┌─────────────────┐  ┌──────────────┐  ┌──────────┐  │
+│  │ Cloud API       │  │ Auth         │  │ Store    │  │
+│  │ REST: orgs/     │  │ OAuth2       │  │ GraphQL  │  │
+│  │ projects/envs   │  │ device grant │  │ stock,   │  │
+│  │ cloud.saleor.io │  │ token refresh│  │ appInst. │  │
+│  │ /platform/api   │  │ auth.saleor  │  │ *.saleor │  │
+│  │                 │  │ .io/realms/  │  │ .cloud/  │  │
+│  │                 │  │ saleor-cloud │  │ graphql/ │  │
+│  └─────────────────┘  └──────────────┘  └──────────┘  │
+└──────────────────────────────────────────────────────┘
+                         │
+                         ▼
+┌──────────────────────────────────────────────────────┐
+│                    Vercel Edge                         │
 │                                                       │
 │  Deployed storefront (Next.js 16 / Paper)             │
 │  npx vercel deploy — env vars — disable protection    │
