@@ -1,0 +1,58 @@
+digraph JollyContext {
+  rankdir=TB;
+  splines=ortho;
+  nodesep=0.4;
+  ranksep=0.4;
+  pad=0.3;
+  bgcolor=transparent;
+  compound=true;
+
+  node [fontname="monospace", fontsize=9, style=filled, fillcolor=white];
+  edge [fontname="monospace", fontsize=7];
+
+  subgraph cluster_jolly {
+    label="Jolly";
+    fontcolor="#2e7d32";
+    color="#2e7d32";
+    style=rounded;
+    fillcolor="#e8f5e9";
+
+    jolly [label="Jolly CLI\n@dk/jolly", shape=box3d, fillcolor="#a5d6a7"];
+  }
+
+  // Persons
+  agent [label="AI Agent\n(coding agent)", shape=box, fillcolor="#ffe0b2", fontsize=9];
+  human [label="Human Customer\n(account owner)", shape=box, fillcolor="#ffe0b2", fontsize=9];
+
+  // External systems
+  saleor_api [label="Saleor Cloud API\ncloud.saleor.io", shape=box, fillcolor="#bbdefb"];
+  saleor_auth [label="Saleor Auth (Keycloak)\nauth.saleor.io", shape=box, fillcolor="#bbdefb"];
+  saleor_gql [label="Saleor Store GraphQL\n*.saleor.cloud/graphql/", shape=box, fillcolor="#bbdefb"];
+  github [label="GitHub\ngithub.com", shape=box, fillcolor="#bbdefb"];
+  vercel [label="Vercel CLI\nnpx vercel", shape=box, fillcolor="#bbdefb"];
+  configurator [label="@saleor/configurator\nnpx configurator", shape=box, fillcolor="#bbdefb"];
+
+  // Edges
+  agent -> jolly [label="npx @dk/jolly <command>"];
+  human -> jolly [label="interactive terminal (TTY)"];
+
+  jolly -> saleor_api [label="REST: orgs/projects/envs"];
+  jolly -> saleor_auth [label="OAuth2 device grant + refresh"];
+  jolly -> saleor_gql [label="GraphQL: stock, appInstall"];
+  jolly -> github [label="git clone saleor/storefront"];
+  jolly -> vercel [label="spawn: npx vercel deploy"];
+  jolly -> configurator [label="spawn: npx configurator"];
+
+  // Legend subgraph
+  subgraph cluster_legend {
+    label="Legend";
+    fontsize=8;
+    style=dashed;
+    color=gray;
+    fillcolor="#fafafa";
+
+    legend_person [label="Person / Actor", shape=box, fillcolor="#ffe0b2", fontsize=7];
+    legend_ext [label="External System", shape=box, fillcolor="#bbdefb", fontsize=7];
+    legend_jolly [label="Jolly System", shape=box3d, fillcolor="#a5d6a7", fontsize=7];
+  }
+}

@@ -1,0 +1,84 @@
+# Jolly System Context — D2 format
+# View: d2 --layout=elk jolly-context.d2 /tmp/out.svg && chafa /tmp/out.svg
+
+vars: {
+  d2-config: {
+    layout-engine: elk
+    theme-id: 200
+    sketch: false
+  }
+}
+direction: right
+
+ai_agent: "AI Agent (coding agent)" {
+  shape: person
+  style: {
+    fill: "#FFE0B2"
+    stroke: "#E65100"
+    font-color: "#000000"
+  }
+}
+
+human: "Human Customer (account owner)" {
+  shape: person
+  style: {
+    fill: "#FFE0B2"
+    stroke: "#E65100"
+  }
+}
+
+jolly: "Jolly" {
+  style.stroke: "#2E7D32"
+
+  jolly_cli: "Jolly CLI\n@dk/jolly" {
+    shape: rectangle
+    style: {
+      fill: "#A5D6A7"
+      stroke: "#2E7D32"
+      font-color: "#000000"
+      border-radius: 8
+      font-size: 11
+    }
+  }
+}
+
+saleor_api: "Saleor Cloud API\ncloud.saleor.io" {
+  shape: cloud
+  style.fill: "#BBDEFB"
+}
+
+saleor_auth: "Saleor Auth (Keycloak)\nauth.saleor.io" {
+  shape: cloud
+  style.fill: "#BBDEFB"
+}
+
+saleor_gql: "Saleor Store GraphQL\n*.saleor.cloud/graphql/" {
+  shape: cloud
+  style.fill: "#BBDEFB"
+}
+
+github: "GitHub\ngithub.com" {
+  shape: cloud
+  style.fill: "#BBDEFB"
+}
+
+vercel: "Vercel CLI\nnpx vercel" {
+  shape: cloud
+  style.fill: "#BBDEFB"
+}
+
+configurator: "@saleor/configurator" {
+  shape: cloud
+  style.fill: "#BBDEFB"
+}
+
+# Relationships
+ai_agent -> jolly.jolly_cli: "npx @dk/jolly <command>"
+human -> jolly.jolly_cli: "interactive terminal"
+
+jolly.jolly_cli -> saleor_api: "REST: orgs/projects/envs"
+jolly.jolly_cli -> saleor_auth: "OAuth2 device grant"
+jolly.jolly_cli -> saleor_gql: "GraphQL: stock, appInstall"
+jolly.jolly_cli -> github: "git clone storefront"
+jolly.jolly_cli -> vercel: "spawn npx vercel"
+jolly.jolly_cli -> configurator: "spawn npx configurator"

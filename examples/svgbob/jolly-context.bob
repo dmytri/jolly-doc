@@ -1,0 +1,42 @@
+.-----------------------------------------------------------------------.
+(                     Jolly — System Context                            )
+`-----------------------------------------------------------------------'
+
+                                     ┌─────────────────────┐
+                                     │     AI Agent         │
+                                     │ (customer's coding   │
+                                     │  agent, primary user)│
+                                     └──────────┬──────────┘
+                                                │ npx @dk/jolly <command>
+                                                │ stdin/stdout JSON envelope
+                                                ▼
+          ┌─────────────────────────────────────────────────────────────────┐
+          │                       Jolly CLI                                 │
+          │              @dk/jolly  (npx-installable, esbuild bundle)       │
+          │                                                                 │
+          │  login | logout | auth status | init | start | doctor           │
+          │  upgrade | skills | create store | completion                   │
+          └──┬──────┬──────┬──────┬──────┬──────┬──────────────────────────┘
+             │      │      │      │      │      │
+     ┌───────┤      │      │      │      │      ├───────────┐
+     │       │      │      │      │      │      │           │
+     ▼       ▼      ▼      ▼      ▼      ▼      ▼           ▼
+  ┌──────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌──────────┐
+  │Saleor│ │Sale│ │Git │ │pnpm│ │Ver.│ │@sal│ │  Human   │
+  │Cloud │ │or  │ │Hub │ │    │ │cel │ │eor.│ │ Customer │
+  │API   │ │Auth│ │    │ │    │ │CLI │ │Conf│ │ (account │
+  │cloud.│ │auth│ │gith│ │    │ │    │ │ig  │ │  owner)  │
+  │saleor│ │sale│ │ub  │ │    │ │    │ │    │ │          │
+  │.io   │ │or  │ │    │ │    │ │    │ │    │ │  interac-│
+  │      │ │.io │ │    │ │    │ │    │ │    │ │ tive TTY │
+  └──────┘ └────┘ └────┘ └────┘ └────┘ └────┘ └──────────┘
+
+.-----------------------------------------------------------------------.
+( Legend                                                                )
+`-----------------------------------------------------------------------'
+  Saleor Cloud API  = cloud.saleor.io/platform/api   (REST CRUD)
+  Saleor Auth       = auth.saleor.io                 (OAuth2 device grant)
+  GitHub            = github.com                     (git clone storefront)
+  pnpm              = storefront package install     (spawn subprocess)
+  Vercel CLI        = npx vercel                     (deploy storefront)
+  @saleor/Config    = @saleor/configurator           (store config as code)

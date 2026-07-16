@@ -1,0 +1,44 @@
+# Jolly System Context — Nomnoml format
+# View: nomnoml jolly-context.nomnoml && chafa out.png
+
+# Style
+#stroke: #333
+#fill: #fff
+#background: transparent
+#font: monospace
+#fontSize: 11
+#leading: 4
+#arrowSize: 0.5
+#bendSize: 0.3
+#lineWidth: 1.5
+#padding: 12
+#spacing: 40
+#edges: hard
+#gutter: 8
+
+[<frame> Jolly System Context |
+  [<actor> AI Agent] -> [Jolly CLI]
+  [<actor> Human Customer] -> [Jolly CLI]
+
+  [<box> Jolly CLI |
+    @dk/jolly
+    --
+    login | logout | auth status
+    init | start | doctor | upgrade
+    skills | create store | completion
+  ]
+
+  [Jolly CLI] -> [Saleor Cloud API]
+  [Jolly CLI] -> [Saleor Auth]
+  [Jolly CLI] -> [Saleor GraphQL]
+  [Jolly CLI] -> [GitHub]
+  [Jolly CLI] -> [Vercel CLI]
+  [Jolly CLI] -> [@saleor/configurator]
+
+  [<database> Saleor Cloud API | cloud.saleor.io]
+  [<database> Saleor Auth | auth.saleor.io]
+  [<database> Saleor GraphQL | *.saleor.cloud/graphql/]
+  [<database> GitHub | github.com]
+  [<database> Vercel CLI | npx vercel]
+  [<database> @saleor/configurator | npx configurator]
+]
