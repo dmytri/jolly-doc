@@ -1,8 +1,5 @@
 # C4 Model Diagrams — Jolly
 
-All diagrams follow README.md Section 3.1: fenced code blocks,
-Unicode box drawing, splitter bottom, text columns.
-
 ---
 
 ## System Context (C4 Level 1)
@@ -13,6 +10,8 @@ See README.md Section 3.1.
 
 ## Container View (C4 Level 2)
 
+Two deployable containers. They share no internal communication.
+
 ```
 ┌──────────────────────────────────────────────────────────┐
 │                  Jolly CLI (Container)                   │
@@ -20,7 +19,7 @@ See README.md Section 3.1.
 │  @dk/jolly — npm package, npx-installable                │
 │  TypeScript, esbuild -> dist/index.js                    │
 │                                                          │
-│  Artifacts inside:                                       │
+│  Artifacts inside this container:                        │
 │  Message Catalog (JSON) — assets/messages/cli.json       │
 │  Jolly Skill (Markdown) — assets/skills/jolly/SKILL.md   │
 │  Starter Recipe (YAML) — assets/skills/jolly/recipe.yml  │
@@ -31,11 +30,24 @@ See README.md Section 3.1.
     AI Agent                  Human Customer             
  (primary user)              (account owner)             
  npx @dk/jolly             interactive terminal          
-```
 
-  Jolly Homepage (Container):  jolly.cool
-  HTML/CSS, Vercel-deployed from assets/homepage/
-  The Human Customer reads the setup guide there.
+
+┌──────────────────────────────────────────────────┐
+│            Jolly Homepage (Container)            │
+│                                                  │
+│  jolly.cool — HTML, CSS, static files            │
+│  Deployed: Vercel, from assets/homepage/         │
+│  Purpose: setup instructions for agent handoff   │
+│  The human reads the guide there, then           │
+│  hands the command to their agent.               │
+└──────────────────────────────────────────────────┘
+
+                         │
+                         │
+                         ▼
+                         Human Customer
+                       (opens in browser)
+```
 
 ---
 
@@ -67,7 +79,7 @@ See README.md Section 3.1.
 │    -> Stripe GQL. Spawns: git, pnpm,                 │
 │    configurator, vercel                              │
 │                                                      │
-│  Doctor Module: diagnostics per group:               │
+│  Doctor Module: diagnostics per group                │
 │    skills, init, saleor, storefront,                 │
 │    deploy, stripe. vercel whoami,                    │
 │    Cloud API probe, GQL probe.                       │
@@ -114,7 +126,7 @@ See README.md Section 3.1.
 └─────────────────┬────────────────┬────────────┬──────────────┘
     Cloud API          Auth         GitHub       Vercel    
  cloud.saleor.io  auth.saleor.io  github.com  *.vercel.app 
-       REST        OAuth2 grant   git clone      deploy    
+       REST           OAuth2      git clone      deploy    
 ```
 
   npm Registry (registry.npmjs.org) publishes @dk/jolly.
