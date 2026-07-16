@@ -1,7 +1,7 @@
 # C4 Model Diagrams — Jolly
 
-Architecture diagrams in Unicode box-drawing style. All boxes are exactly
-66 chars wide with centered connectors. No alignment issues.
+All diagrams follow README.md Section 3.1 format: box with splitter
+bottom, text columns below. One vertical flow per diagram.
 
 ---
 
@@ -13,138 +13,107 @@ See README.md Section 3.1.
 
 ## Container View (C4 Level 2)
 
-  ┌────────────────────────────────────────────────────────────────┐
-  │                     Customer's Agent (AI)                      │
-  │                        Primary CLI user                        │
-  │      Reads JSON envelope, approves stages via riskContext      │
-  └────────────────────────────────────────────────────────────────┘
+Two deployable containers. The CLI is the primary; the Homepage
+provides the setup guide. They do not communicate with each other.
 
-                                  │
-                                  ▼
+┌────────────────────────────────────────────────────────────────┐
+│                     Jolly CLI (Container)                      │
+│                                                                │
+│  @dk/jolly — npm package, npx-installable                      │
+│  TypeScript, esbuild -> dist/index.js                          │
+│                                                                │
+│  Subcommands: login, logout, auth status, init, start,         │
+│  doctor, upgrade, skills, create store, completion             │
+│                                                                │
+│  Artifacts inside this container:                              │
+│  Message Catalog  —  assets/messages/cli.json  (JSON)          │
+│  Jolly Skill      —  assets/skills/jolly/SKILL.md  (Markdown)  │
+│  Starter Recipe   —  assets/skills/jolly/recipe.yml  (YAML)    │
+└────────────────┬───────────────────────────────────────────────┘
+    AI Agent                     Human Customer                
+ (primary user)                 (account owner)                
+ npx @dk/jolly                interactive terminal             
 
-  ┌────────────────────────────────────────────────────────────────┐
-  │                     Jolly CLI (Container)                      │
-  │              TypeScript, esbuild -> dist/index.js              │
-  │             npm publish @dk/jolly, npx-installable             │
-  │                                                                │
-  │             Data artifacts inside this container:              │
-  │       Message Catalog (JSON) - assets/messages/cli.json        │
-  │     Jolly Skill (Markdown) - assets/skills/jolly/SKILL.md      │
-  │     Starter Recipe (YAML) - assets/skills/jolly/recipe.yml     │
-  └────────────────────────────────────────────────────────────────┘
-
-    |-- Spawns official CLIs (never reimplements APIs):
-    |   git clone -> pnpm install -> @saleor/configurator -> npx vercel
-    |-- Own code contacts (first-party only):
-    |   cloud.saleor.io  |  auth.saleor.io  |  *.saleor.cloud
-    |-- Human Customer (TTY) and Jolly Homepage (jolly.cool)
-
-  The Homepage is a separate container (HTML/CSS, deployed to Vercel).
-  The human opens jolly.cool/setup in a browser for agent handoff.
+  Jolly Homepage (Container):  jolly.cool  —  HTML/CSS, Vercel-deployed
+  Ships under assets/homepage/ in the same repo.
+  The Human Customer reads the setup guide there.
 
 ---
 
 ## Component View (C4 Level 3)
 
-  ┌────────────────────────────────────────────────────────────────┐
-  │                           CLI Entry                            │
-  │                      @bomb.sh/args parser                      │
-  │                 Flags: --json, --quiet, --yes                  │
-  │                   Dispatches by command name                   │
-  └────────────────────────────────────────────────────────────────┘
+The CLI Entry dispatches by command name. All modules use shared utilities.
 
+┌──────────────────────────────────────────────────────────────────────┐
+│                      CLI Entry (@bomb.sh/args)                       │
+│                                                                      │
+│  Single parser seam: GLOBAL_BOOLEAN_FLAGS (--json, --quiet, --yes)   │
+│  Dispatches: login -> Auth, start -> Orchestrator, doctor -> Doctor  │
+└──────────────────────────────────────────────────────────────────────┘
+
+                                   │
+                                   │
+                                   ▼
+
+┌────────────────────────────────────────────────────────────────────┐
+│                                                                    │
+│                                                                    │
+│                                                                    │
+│  Auth/Cloud Module:  login, logout, auth status, create store      │
+│    OAuth2 device grant, .env I/O, Cloud API CRUD                   │
+│    -> Saleor Auth, -> Saleor Cloud                                 │
+│                                                                    │
+│  Stage Orchestrator:  jolly start (7-stage pipeline)               │
+│    Concurrency, idempotency, riskContext per stage                 │
+│    -> Saleor GQL, -> Stripe GQL                                    │
+│    Spawns: git, pnpm, configurator, vercel                         │
+│                                                                    │
+│  Doctor Module:  diagnostics per group                             │
+│    skills, init, saleor, storefront, deploy, stripe                │
+│    vercel whoami, Cloud API probe, GQL purch. probe                │
+│    -> Vercel CLI, -> Cloud API, -> Saleor GQL                      │
+│                                                                    │
+│  Output Module:  JSON envelope builder                             │
+│    { command, status, summary, data, checks, nextSteps, errors }   │
+│    Human TTY renderer (colour, emoji, TTY detection)               │
+│    --quiet filter, in-place stderr progress                        │
+└────────────────────────────────────────────────────────────────────┘
+
+                                  │
                                   │
                                   ▼
 
-  Dispatches to one of four modules:
-
-  ┌────────────────────────────────────────────────────────────────┐
-  │                       Auth/Cloud Module                        │
-  │              Commands: login, logout, auth status              │
-  │                          create store                          │
-  │             OAuth2 device grant + token management             │
-  │                   .env read/write (mode 600)                   │
-  │              Cloud API: orgs, projects, env CRUD               │
-  └────────────────────────────────────────────────────────────────┘
-
-  ┌────────────────────────────────────────────────────────────────┐
-  │                       Stage Orchestrator                       │
-  │                 jolly start: 7-stage pipeline                  │
-  │             Concurrency: store+storefront overlap              │
-  │                   Idempotency + resumability                   │
-  │                riskContext per high-risk stage                 │
-  │            Spawns: git, pnpm, configurator, vercel             │
-  └────────────────────────────────────────────────────────────────┘
-
-  ┌────────────────────────────────────────────────────────────────┐
-  │                         Doctor Module                          │
-  │              Diagnostics per group: skills, init,              │
-  │             saleor, storefront, deployment, stripe             │
-  │                vercel whoami, Cloud API probe,                 │
-  │                  GraphQL purchasability probe                  │
-  └────────────────────────────────────────────────────────────────┘
-
-  All modules use shared utilities below:
-
-  ┌────────────────────────────────────────────────────────────────┐
-  │                     Shared Utilities Layer                     │
-  │         HTTP retry (cloudFetchRetry) | Host allowlist          │
-  │       .env I/O (mode 600, POSIX) | Risk context builder        │
-  │        Skill installer (npx skills) | MCP config writer        │
-  └────────────────────────────────────────────────────────────────┘
-
-  ┌────────────────────────────────────────────────────────────────┐
-  │             Output Module (called by all modules)              │
-  │         JSON envelope: command, status, summary, data,         │
-  │                   checks, nextSteps, errors                    │
-  │              Human TTY renderer | --quiet filter               │
-  └────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────┐
+│                           Shared Utilities Layer                           │
+│                                                                            │
+│  HTTP retry (cloudFetchRetry)  |  Host allowlist (NON_FIRST_PARTY_HOST)    │
+│  .env I/O (mode 600, POSIX quoting)  |  Risk context builder               │
+│  Skill installer (npx skills add)  |  MCP config writer (.mcp.json merge)  │
+└────────────────────────────────────────────────────────────────────────────┘
 
 ---
 
 ## Deployment View
 
-  ┌────────────────────────────────────────────────────────────────┐
-  │                          npm Registry                          │
-  │                       registry.npmjs.org                       │
-  │                       @dk/jolly package                        │
-  │                     npx resolve & download                     │
-  └────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│        Customer Machine (Node.js >= 20.12.0)         │
+│                                                      │
+│  npx @dk/jolly  --  dist/index.js  (esbuild bundle)  │
+│                                                      │
+│  Calls real services:                                │
+│    HTTPS REST -> cloud.saleor.io                     │
+│    HTTPS OAuth2 -> auth.saleor.io                    │
+│    HTTPS GraphQL -> *.saleor.cloud                   │
+│    git clone -> github.com                           │
+│                                                      │
+│  Spawns official CLIs (never reimplements APIs):     │
+│    npx vercel  (deploy, login, whoami)               │
+│    npx @saleor/configurator  (recipe deploy)         │
+│    npx pnpm  (storefront dependencies)               │
+└──────────────────┬────────────────┬────────────┬─────┘
+ Saleor Cloud API   Saleor Auth      GitHub   Vercel Edge
+ cloud.saleor.io   auth.saleor.io  github.com *.vercel.app
+    REST CRUD      OAuth2 device   git clone  deploy storefront
 
-                                  │
-                                  ▼
-
-  ┌────────────────────────────────────────────────────────────────┐
-  │                        Customer Machine                        │
-  │                       Node.js >= 20.12.0                       │
-  │                 npx @dk/jolly (esbuild bundle)                 │
-  │                                                                │
-  │                 HTTPS REST -> cloud.saleor.io                  │
-  │                 HTTPS OAuth2 -> auth.saleor.io                 │
-  │                HTTPS GraphQL -> *.saleor.cloud                 │
-  │                    git clone -> github.com                     │
-  │                      spawn -> npx vercel                       │
-  │               spawn -> npx @saleor/configurator                │
-  │                       spawn -> npx pnpm                        │
-  └────────────────────────────────────────────────────────────────┘
-
-                                  │
-                                  ▼
-
-  ┌────────────────────────────────────────────────────────────────┐
-  │                          Saleor Cloud                          │
-  │            Cloud API (cloud.saleor.io/platform/api)            │
-  │           Auth (auth.saleor.io/realms/saleor-cloud)            │
-  │              Store GQL (*.saleor.cloud/graphql/)               │
-  └────────────────────────────────────────────────────────────────┘
-
-                                  │
-                                  ▼
-
-  ┌────────────────────────────────────────────────────────────────┐
-  │                          Vercel Edge                           │
-  │            Deployed storefront (Next.js 16, Paper)             │
-  │                       npx vercel deploy                        │
-  │              Env vars + disable deploy protection              │
-  │                          *.vercel.app                          │
-  └────────────────────────────────────────────────────────────────┘
+  npm Registry (registry.npmjs.org):
+    Publishes @dk/jolly. Resolved by npx at runtime.
