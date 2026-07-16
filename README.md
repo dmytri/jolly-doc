@@ -443,7 +443,13 @@ No redundant hand-rolled implementations.
 
 ## 13. C4 Model Diagrams
 
-Architecture visualisations at all four C4 levels — context, container, component, deployment — plus a sequence diagram for `jolly start` and the test infrastructure layout.
+Architecture diagrams in Unicode box-drawing style (same format as Section 3.1 above — renders in any terminal, no tools needed).
+
+- **System Context** — Jolly CLI, actors, external systems
+- **Container View** — CLI internals, homepage, message catalog, skill
+- **Component View** — CLI modules (entry, auth, cloud API, orchestrator, doctor, etc.)
+- **Deployment View** — customer machine, Saleor Cloud, Vercel, GitHub, npm
+- **Stage Pipeline** — `jolly start` 7-stage flow with concurrency and gates
 
 See [C4 Model Diagrams](c4-diagrams.md).
 
