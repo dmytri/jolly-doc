@@ -7,121 +7,140 @@ diagram in `README.md` Section 3.1 — renders in any terminal, no tools needed.
 
 ## System Context (C4 Level 1)
 
+See `README.md` Section 3.1. The diagram there shows the flow:
+
 ```
-                     ┌───────────────────────┐
-                     │    Customer's Agent    │── CLI (npx, --json envelope)
-                     └───────────┬───────────┘
-                                 │
-                                 ▼
-          ┌──────────────────────────────────────────────────────────┐
-          │                        Jolly CLI                         │
-          │  @dk/jolly  (npx-installable, TypeScript → esbuild)      │
-          │                                                          │
-          │  Subcommands: login, logout, auth status, init, start,   │
-          │  doctor, upgrade, skills, create store, completion       │
-          ├────────┬────────┬────────┬────────┬────────┬────────────┤
-          │        │        │        │        │        │            │
-          ▼        ▼        ▼        ▼        ▼        ▼
-     ┌────────┐┌───────┐┌──────┐┌──────┐┌──────┐┌────────┐
-     │ Saleor ││ Saleor││ Git  ││ pnpm ││Vercel││ Stripe │
-     │ Cloud  ││ Graph ││ Hub  ││      ││ CLI  ││ (via   │
-     │ API    ││ QL    ││      ││      ││      ││ Saleor │
-     │cloud.sa││*.sale││github││      ││      ││ appIn- │
-     │leor.io ││or.clo││.com  ││      ││      ││stall)  │
-     └────────┘└───────┘└──────┘└──────┘└──────┘└────────┘
-          │        │        │        │        │        │
-          │ REST   │ Graph  │ git   │ spawn │ spawn  │ Saleor
-          │ CRUD   │ QL     │ clone │ pnpm  │ npx    │ GraphQL
-          │        │        │       │ inst. │ vercel │ appInstall
-          ▼        ▼        ▼       ▼       ▼        ▼
+Customer's Agent → Jolly CLI → Saleor Cloud, Saleor GraphQL, Git, pnpm, Vercel, Stripe
 ```
+
+For a complete listing of every external system Jolly interacts with:
+
+```
+┌──────────────┬──────────────────────────────┬──────────────────────────────┐
+│ System       │ Interface                    │ Purpose                      │
+├──────────────┼──────────────────────────────┼──────────────────────────────┤
+│ Saleor Cloud │ cloud.saleor.io/platform/api │ Auth, org/project/environmen │
+│ API          │ HTTPS REST                   │ CRUD                         │
+├──────────────┼──────────────────────────────┼──────────────────────────────┤
+│ Saleor Auth  │ auth.saleor.io/realms/       │ OAuth2 device authorization  │
+│ (Keycloak)   │ saleor-cloud                 │ grant + token refresh        │
+├──────────────┼──────────────────────────────┼──────────────────────────────┤
+│ Saleor Store │ *.saleor.cloud/graphql/      │ GraphQL: stock seeding,      │
+│ GraphQL      │ HTTPS GraphQL                │ appInstall, purchasability   │
+├──────────────┼──────────────────────────────┼──────────────────────────────┤
+│ GitHub       │ github.com                   │ git clone saleor/storefront  │
+│              │ git                          │                              │
+├──────────────┼──────────────────────────────┼──────────────────────────────┤
+│ Vercel CLI   │ npx vercel                   │ spawn subprocess: deploy,    │
+│              │                              │ login, whoami, env vars      │
+├──────────────┼──────────────────────────────┼──────────────────────────────┤
+│ @saleor/     │ npx @saleor/configurator     │ spawn subprocess: deploy     │
+│ configurator │                              │ starter recipe               │
+├──────────────┼──────────────────────────────┼──────────────────────────────┤
+│ Stripe App   │ stripe-v2.saleor.app         │ installed via Saleor GraphQL │
+│              │ (via appInstall)             │ appInstall; Dashboard config │
+├──────────────┼──────────────────────────────┼──────────────────────────────┤
+│ mcp.saleor   │ mcp.saleor.app               │ read-only store data access  │
+│ .app (MCP)   │ (informational, not contacted│ after setup (MCP server)     │
+│              │ by Jolly's own code)         │                              │
+└──────────────┴──────────────────────────────┴──────────────────────────────┘
+```
+
+Jolly spawns official CLIs — it does not reimplement their APIs. Each spawned CLI
+uses its own auth (Vercel session, git credentials, configurator token). Jolly's own
+request code contacts only: cloud.saleor.io, auth.saleor.io, *.saleor.cloud, github.com.
 
 ---
 
 ## Container View (C4 Level 2)
 
-```
-                     ┌─────────────────────────────────────┐
-                     │         Jolly Homepage               │
-                     │  jolly.cool  (Vercel-deployed)       │
-                     │  /setup page for agent handoff       │
-                     └────────────────┬────────────────────┘
-                                      │ customer reads setup
-                                      ▼
-┌───────────────────────────────────────────────────────────────────────┐
-│                              Jolly CLI                                │
-│  @dk/jolly  —  dist/index.js  (esbuild bundle, Node.js)               │
-│                                                                       │
-│  ┌──────────────────────────┐     ┌────────────────────────────────┐  │
-│  │    Message Catalog        │     │        Jolly Skill             │  │
-│  │  assets/messages/cli.json │     │  assets/skills/jolly/SKILL.md  │  │
-│  │  All human-facing copy    │     │  Bundled agent playbook        │  │
-│  │  resolved by key at runtim│     │  Installed via npx skills add  │  │
-│  └──────────────────────────┘     └────────────────────────────────┘  │
-│                                                                       │
-│  Spawns official CLIs for mechanical work:                            │
-│    git clone  →  pnpm install  →  @saleor/configurator  →  npx vercel│
-└───────────────────────────────────────────────────────────────────────┘
-                               │
-                               │ npx @dk/jolly <command>
-                               ▼
-                    ┌─────────────────────┐
-                    │  Customer's Agent   │
-                    └─────────────────────┘
+Jolly ships four containers. The CLI is the primary; the others are supporting assets.
 
-  External systems Jolly talks to:
-  ┌──────────┐  ┌──────────┐  ┌──────────────┐  ┌────────┐  ┌──────────┐
-  │ Saleor   │  │ Saleor   │  │ Saleor Store │  │ GitHub │  │ Vercel   │
-  │ Cloud API│  │ Auth     │  │ GraphQL      │  │        │  │ CLI      │
-  │cloud.sale│  │auth.saleo│  │*.saleor.cloud│  │github.c│  │(spawned) │
-  │or.io     │  │r.io      │  │/graphql/     │  │om      │  │          │
-  └──────────┘  └──────────┘  └──────────────┘  └────────┘  └──────────┘
 ```
+┌──────────┬──────────────┬──────────────────────┬──────────────────────┐
+│ Container │ Technology   │ What it does         │ Delivered how        │
+├──────────┼──────────────┼──────────────────────┼──────────────────────┤
+│ Jolly    │ TypeScript   │ CLI entry, command    │ Published npm        │
+│ CLI      │ esbuild      │ handlers, 7-stage    │ package @dk/jolly    │
+│          │ dist/index.js│ pipeline             │ npx-installable       │
+├──────────┼──────────────┼──────────────────────┼──────────────────────┤
+│ Message  │ JSON file    │ All human-facing copy│ Bundled in npm        │
+│ Catalog  │              │ resolved by key      │ package               │
+│          │              │ at runtime           │ assets/messages/     │
+├──────────┼──────────────┼──────────────────────┼──────────────────────┤
+│ Jolly    │ Markdown     │ Agent playbook for   │ Bundled in npm        │
+│ Skill    │ SKILL.md     │ supervising jolly    │ package               │
+│          │              │ start                │ assets/skills/       │
+├──────────┼──────────────┼──────────────────────┼──────────────────────┤
+│ Jolly    │ HTML/CSS     │ jolly.cool — setup   │ Deployed to Vercel   │
+│ Homepage │              │ instructions, agent  │ as separate project  │
+│          │              │ handoff page         │ from assets/homepage/│
+└──────────┴──────────────┴──────────────────────┴──────────────────────┘
+```
+
+The CLI container is decomposed further in the Component View below.
+The Skill and Homepage are human-authored assets (Shipshape rules in AGENTS.md).
 
 ---
 
 ## Component View (C4 Level 3)
 
-CLI internals — each component is a logical module in `src/`.
+CLI internals — each component is a logical module in `src/`. The flow is:
 
 ```
-                         ┌──────────────────────────────────────┐
-                         │            CLI Entry                 │
-                         │  @bomb.sh/args parser                │
-                         │  Single parser seam for all flags    │
-                         │  (--json, --quiet, --yes)            │
-                         │  Dispatches to command handlers      │
-                         └──┬────────┬────────┬────────┬────────┘
-                            │        │        │        │
-          ┌─────────────────┤        │        │        ├────────────────┐
-          │                 │        │        │        │                │
-          ▼                 ▼        ▼        ▼        ▼                │
-   ┌──────────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────┐     │
-   │ Auth Module  │  │  Cloud   │  │  Stage   │  │   Doctor     │     │
-   │ OAuth2 device│  │  API     │  │Orchestrat│  │   Module     │     │
-   │ grant flow   │  │  Client  │  │   or     │  │ Diagnostics  │     │
-   │ .env read/   │  │ Org/proj/│  │ jolly    │  │ per group:   │     │
-   │ write        │  │ env CRUD │  │ start    │  │ skills, init,│     │
-   │ token mgmt   │  │ task     │  │ pipeline │  │ saleor,      │     │
-   │ refresh      │  │ polling  │  │ 7 stages │  │ storefront,  │     │
-   └──────┬───────┘  └────┬─────┘  └────┬─────┘  │ deployment,  │     │
-          │               │             │        │ stripe       │     │
-          │               │             │        └──────┬───────┘     │
-          │               │             │               │             │
-          ▼               ▼             ▼               ▼             │
-  ┌────────────────────────────────────────────────────────────┐      │
-  │                    Shared Utilities                         │      │
-  │  HTTP retry (cloudFetchRetry) | Host allowlist | .env I/O  │      │
-  │  POSIX-safe quoting | Mode 600 file permissions            │      │
-  └────────────────────────────────────────────────────────────┘      │
-                                                                      │
-   ┌──────────────────────┐     ┌──────────────────┐                  │
-   │   Output Module      │     │  Risk Context    │                  │
-   │ Envelope builder     │     │  Builder         │                  │
-   │ Human TTY renderer   │     │ Structured risk  │                  │
-   │ --quiet filter       │     │ metadata per     │                  │
-   │ Colour/emoji/TTY det │     │ high-risk stage  │                  │
-   └──────────────────────┘     └──────────────────┘                  │
+CLI Entry (parser + dispatch)
+    │
+    ├── Auth / Cloud Module     (login, logout, auth status, create store)
+    ├── Stage Orchestrator      (jolly start — 7-stage pipeline)
+    ├── Doctor Module           (diagnostics per group)
+    └── Output Module           (envelope builder, TTY renderer, --quiet)
+         │
+         ▼
+    Shared Utilities (across all modules)
+    └── HTTP retry, host allowlist, .env I/O, risk context builder,
+        skill installer, MCP config writer
+```
+
+Detailed module responsibilities:
+
+```
+┌──────────────────┬───────────────────────────────────────────────────────┐
+│ Module           │ Responsibilities                                      │
+├──────────────────┼───────────────────────────────────────────────────────┤
+│ CLI Entry        │ @bomb.sh/args parser — single parser seam for all     │
+│                  │ flags (--json, --quiet, --yes). Dispatches to command  │
+│                  │ handler. Handles --help, --dry-run, unknown commands.  │
+├──────────────────┼───────────────────────────────────────────────────────┤
+│ Auth / Cloud     │ OAuth2 device authorization grant against Saleor      │
+│                  │ Keycloak. Token storage + refresh. .env read/write.   │
+│                  │ Cloud API: org list, project create/reuse,            │
+│                  │ environment create with async task polling.           │
+│                  │ Commands: login, logout, auth status, create store.   │
+├──────────────────┼───────────────────────────────────────────────────────┤
+│ Stage            │ jolly start — runs 7 stages in order with concurrency │
+│ Orchestrator     │ where stages are independent (store+storefront).      │
+│                  │ Idempotency gates skip completed stages. Resumability │
+│                  │ detection from .env, local dirs, Vercel state.        │
+│                  │ Emits riskContext per high-risk stage for agent       │
+│                  │ approval. Spawns official CLIs for mechanical work.   │
+├──────────────────┼───────────────────────────────────────────────────────┤
+│ Doctor Module    │ Diagnostic checks per group: skills, init, saleor,    │
+│                  │ storefront, deployment, stripe. Runs vercel whoami,   │
+│                  │ Cloud API organizations probe, GraphQL purchasability │
+│                  │ probe. Reports per-check status (pass/warning/fail/   │
+│                  │ skipped/unknown).                                     │
+├──────────────────┼───────────────────────────────────────────────────────┤
+│ Output Module    │ JSON envelope builder (command, status, summary, data,│
+│                  │ checks, nextSteps, errors). Human TTY renderer with   │
+│                  │ colour/emoji/TTY detection. --quiet filter.           │
+│                  │ In-place stderr progress for interactive (Bombshell). │
+├──────────────────┼───────────────────────────────────────────────────────┤
+│ Shared Utils     │ HTTP retry with backoff (cloudFetchRetry). First-party │
+│                  │ host allowlist (NON_FIRST_PARTY_HOST gate). .env      │
+│                  │ parser/writer (mode 600, POSIX-safe quoting).         │
+│                  │ Risk context builder. Skill installer (npx skills     │
+│                  │ add). MCP config writer (.mcp.json merge).            │
+└──────────────────┴───────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -129,44 +148,53 @@ CLI internals — each component is a logical module in `src/`.
 ## Deployment View
 
 ```
-                    ┌──────────────────────────────────────┐
-                    │        Customer Machine               │
-                    │  Node.js >= 20.12.0, any OS           │
-                    │                                      │
-                    │  npx @dk/jolly  dist/index.js        │
-                    │  (esbuild bundle, published npm)     │
-                    └──────────┬───────────────────────────┘
-                               │
-          ┌────────────────────┼────────────────────┬─────────────────┐
-          │                    │                    │                 │
-          ▼                    ▼                    ▼                 ▼
-  ┌───────────────┐  ┌───────────────┐  ┌──────────────┐  ┌──────────────┐
-  │  Saleor Cloud │  │  Saleor Auth  │  │   GitHub     │  │  npm Registry│
-  │  cloud.saleor │  │  auth.saleor  │  │  github.com  │  │registry.npmjs│
-  │  .io/platform │  │  .io/realms/  │  │  git clone   │  │  .org        │
-  │  /api         │  │  saleor-cloud │  │  saleor/     │  │  npx resolve │
-  │  (REST CRUD)  │  │  (OAuth2)     │  │  storefront  │  │  + download  │
-  └───────┬───────┘  └───────┬───────┘  └──────────────┘  └──────────────┘
-          │                  │
-          │                  │
-          ▼                  ▼
-  ┌──────────────────────────────────────────────────────────────┐
-  │                   Saleor Store Instance                       │
-  │              *.saleor.cloud/graphql/                          │
-  │                                                               │
-  │  GraphQL API: stock seeding, appInstall, purchasability probe │
-  │  Dashboard:   *.saleor.cloud/dashboard/                      │
-  └──────────────────────────────────────────────────────────────┘
-
-                    ┌────────────────────────────────┐
-                    │         Vercel Edge             │
-                    │                                │
-                    │  Deployed storefront            │
-                    │  (Next.js 16 / Paper)           │
-                    │  npx vercel deploy               │
-                    │                                │
-                    │  Set env vars + disable protect │
-                    └────────────────────────────────┘
+┌──────────────────────┐
+│   npm Registry       │──── npx resolve & download
+│  registry.npmjs.org  │
+│  @dk/jolly package   │
+└──────────────────────┘
+         │
+         ▼
+┌──────────────────────────────────────────────────────┐
+│              Customer Machine                         │
+│  Node.js >= 20.12.0                                   │
+│  npx @dk/jolly — dist/index.js (esbuild)             │
+│                                                       │
+│  Calls real services via HTTPS and spawns CLIs:      │
+│                                                       │
+│  ┌──────────────┐  ┌──────────────┐  ┌────────────┐  │
+│  │ HTTPS to     │  │ HTTPS to     │  │ git clone  │  │
+│  │ cloud.saleor │  │ auth.saleor  │  │ from       │  │
+│  │ .io          │  │ .io          │  │ github.com │  │
+│  └──────────────┘  └──────────────┘  └────────────┘  │
+│                                                       │
+│  ┌──────────────┐  ┌──────────────┐  ┌────────────┐  │
+│  │ spawn: npx   │  │ spawn: npx   │  │ spawn: npx │  │
+│  │ vercel       │  │ @saleor/conf│  │ pnpm       │  │
+│  └──────────────┘  └──────────────┘  └────────────┘  │
+└──────────────────────────────────────────────────────┘
+         │
+         ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                         Saleor Cloud                                   │
+│                                                                        │
+│  ┌─────────────────────┐  ┌────────────────────┐  ┌─────────────────┐  │
+│  │ Cloud API           │  │ Auth (Keycloak)    │  │ Store Instance   │  │
+│  │ REST: orgs/projects │  │ OAuth2 device grant│  │ GraphQL API      │  │
+│  │ /environments CRUD  │  │ token refresh      │  │ stock, appInstall│  │
+│  │ cloud.saleor.io/    │  │ auth.saleor.io/    │  │ *.saleor.cloud/  │  │
+│  │ platform/api        │  │ realms/saleor-cloud│  │ graphql/         │  │
+│  └─────────────────────┘  └────────────────────┘  └─────────────────┘  │
+└────────────────────────────────────────────────────────────────────────┘
+         │
+         ▼
+┌──────────────────────────────────────────────────────┐
+│  Vercel Edge                                          │
+│                                                       │
+│  Deployed storefront (Next.js 16 / Paper)             │
+│  npx vercel deploy — env vars — disable protection    │
+│  *.vercel.app (public)                                │
+└──────────────────────────────────────────────────────┘
 ```
 
 ---
